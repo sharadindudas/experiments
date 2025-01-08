@@ -1,6 +1,6 @@
 import { ProductModel } from "../models/productModel.js";
-import { ApiFeatures } from "../utils/apifeatures.js";
 import { TryCatchHandler, ErrorHandler } from "../utils/handlers.js";
+import { ApiFeatures } from "../utils/apifeatures.js";
 
 // Get all products
 export const getAllProducts = TryCatchHandler(async (req, res, next) => {
