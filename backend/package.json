@@ -1,14 +1,14 @@
 {
-    "name": "ecommerce-mern",
+    "name": "ecommerce-backend",
     "version": "1.0.0",
-    "main": "src/server.js",
+    "main": "index.js",
     "type": "module",
     "scripts": {
         "start": "node --env-file=.env.production src/server.js",
         "dev": "nodemon --env-file=.env.development src/server.js"
     },
     "keywords": [],
-    "author": "",
+    "author": "Sharadindu Das",
     "license": "ISC",
     "description": "",
     "dependencies": {
@@ -26,3 +26,4 @@
         "validator": "^13.12.0"
     }
 }
+
