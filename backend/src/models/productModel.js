@@ -3,67 +3,54 @@ import { Schema, model } from "mongoose";
 const productSchema = new Schema(
     {
         name: {
-            type: String,
-            required: [true, "Please provide a product name"],
-            trim: true
+            type: String
         },
-        description: {
+        image: {
+            type: Array,
+            default: []
+        },
+        category: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Category"
+            }
+        ],
+        subCategory: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "SubCategory"
+            }
+        ],
+        unit: {
             type: String,
-            required: [true, "Please provide a product description"],
-            trim: true
+            default: ""
+        },
+        stock: {
+            type: Number,
+            default: null
         },
         price: {
             type: Number,
-            required: [true, "Please provide a product price"]
+            defualt: null
         },
-        category: {
+        discount: {
+            type: Number,
+            default: null
+        },
+        description: {
             type: String,
-            required: [true, "Please provide a product category"],
-            trim: true
+            default: ""
         },
-        images: [
-            {
-                public_id: {
-                    type: String,
-                    required: true
-                },
-                url: {
-                    type: String,
-                    required: true
-                },
-                _id: false
-            }
-        ],
-        stock: {
-            type: Number,
-            default: 1
+        more_details: {
+            type: Object,
+            default: {}
         },
-        ratings: {
-            type: Number,
-            default: 0
-        },
-        reviews: [
-            {
-                name: {
-                    type: String,
-                    required: true
-                },
-                rating: {
-                    type: Number,
-                    required: true
-                },
-                comment: {
-                    type: String,
-                    required: true
-                }
-            }
-        ],
-        numOfReviews: {
-            type: Number,
-            default: 0
+        publish: {
+            type: Boolean,
+            default: true
         }
     },
-    { timestamps: true }
+    { timestamps: true, versionKey: false }
 );
 
 export const ProductModel = model("Product", productSchema);

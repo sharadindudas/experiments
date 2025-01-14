@@ -1,49 +1,79 @@
 import { Schema, model } from "mongoose";
-import validator from "validator";
 import bcrypt from "bcrypt";
 
 const userSchema = new Schema(
     {
         name: {
             type: String,
-            required: [true, "Please provide a name"],
-            minLength: [8, "Name must be at least 8 characters"],
-            maxLength: [100, "Name must not exceed 100 characters"],
-            trim: true
+            required: [true, "Provide name"]
         },
         email: {
             type: String,
-            required: [true, "Please provide an email"],
-            trim: true,
-            unique: true,
-            validate: [validator.isEmail, "Please provide a valid email"]
+            required: [true, "provide email"],
+            unique: true
         },
         password: {
             type: String,
-            required: [true, "Please provide a password"],
-            minLength: [8, "Password must be at least 8 characters"],
-            trim: true
+            required: [true, "provide password"]
         },
         avatar: {
-            public_id: {
-                type: String,
-                required: true
-            },
-            url: {
-                type: String,
-                required: true
-            },
-            _id: false
+            type: String,
+            default: ""
+        },
+        mobile: {
+            type: Number,
+            default: null
+        },
+        refresh_token: {
+            type: String,
+            default: ""
+        },
+        verify_email: {
+            type: Boolean,
+            default: false
+        },
+        last_login_date: {
+            type: Date,
+            default: ""
+        },
+        status: {
+            type: String,
+            enum: ["Active", "Inactive", "Suspended"],
+            default: "Active"
+        },
+        address_details: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Address"
+            }
+        ],
+        shopping_cart: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Cart"
+            }
+        ],
+        orderHistory: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Order"
+            }
+        ],
+        forgot_password_otp: {
+            type: String,
+            default: null
+        },
+        forgot_password_expiry: {
+            type: Date,
+            default: ""
         },
         role: {
             type: String,
-            enum: ["user", "admin"],
-            default: "user"
-        },
-        forgotPasswordToken: String,
-        forgotPasswordTokenExpiry: Date
+            enum: ["ADMIN", "USER"],
+            default: "USER"
+        }
     },
-    { timestamps: true }
+    { timestamps: true, versionKey: false }
 );
 
 // Hash the password

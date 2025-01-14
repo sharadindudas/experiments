@@ -10,12 +10,10 @@ process.on("uncaughtException", (err) => {
 });
 
 // Connection to server
-const server = app.listen(PORT, () => {
-    console.log(`Server started at ${SERVER_URL}`);
+const server = app.listen(PORT, () => console.log(`Server started at ${SERVER_URL}`));
 
-    // Connection to mongodb
-    connectMongoDB();
-});
+// Connection to database
+connectMongoDB();
 
 // Unhandled promise rejection handling
 process.on("unhandledRejection", (err) => {

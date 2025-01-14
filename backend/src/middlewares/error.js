@@ -14,6 +14,18 @@ export const errorMiddleware = (err, req, res, next) => {
         err = new ErrorHandler(message, 400);
     }
 
+    // Invalid jwt error
+    if (err.name === "JsonWebTokenError") {
+        const message = "Invalid token. Please log in again.";
+        err = new ErrorHandler(message, 401);
+    }
+
+    // Expired jwt error
+    if (err.name === "TokenExpiredError") {
+        const message = "Session expired. Please log in again.";
+        err = new ErrorHandler(message, 401);
+    }
+
     // Return the response
     res.status(err.statusCode).json({
         success: false,

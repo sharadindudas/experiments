@@ -1,12 +1,19 @@
+import { ACCESS_TOKEN_SECRET, ENV, FRONTEND_URL, REFRESH_TOKEN_SECRET } from "../config/config.js";
 import { UserModel } from "../models/userModel.js";
-import { TryCatchHandler, ErrorHandler } from "../utils/handlers.js";
+import verifyEmailTemplate from "../templates/verifyEmail.js";
+import { ErrorHandler, TryCatchHandler } from "../utils/handlers.js";
+import { sendMail } from "../utils/sendMail.js";
 import jwt from "jsonwebtoken";
-import { ENV, JWT_SECRET } from "../config/config.js";
 
-// Register user
-export const registerUser = TryCatchHandler(async (req, res, next) => {
+// Register
+export const register = TryCatchHandler(async (req, res, next) => {
     // Get data from request body
     const { name, email, password } = req.body;
+
+    // Validation of data
+    if (!name || !email || !password) {
+        throw new ErrorHandler("Please provide all the fields", 400);
+    }
 
     // Check if the user already exists in the db or not
     const userExists = await UserModel.findOne({ email });
@@ -18,34 +25,81 @@ export const registerUser = TryCatchHandler(async (req, res, next) => {
     const newUser = await UserModel.create({
         name,
         email,
-        password,
-        avatar: {
-            public_id: "this is a sample id",
-            url: "profile picture url"
-        }
+        password
     });
 
     // Remove sensitive data
     newUser.password = undefined;
-    newUser.__v = undefined;
+
+    // Create a verify user url
+    const url = `${FRONTEND_URL}/verify?id=${newUser._id}`;
+
+    // Send the verify email to the user
+    const emailResponse = await sendMail({
+        email,
+        title: "Blinkit | Verification Email",
+        body: verifyEmailTemplate({ name, url })
+    });
+
+    // Check if the email is sent successfully or not
+    if (!emailResponse.success) {
+        throw new ErrorHandler(emailResponse.message, 400);
+    } else {
+        // Return the response
+        res.status(201).json({
+            success: true,
+            message: "User registered successfully",
+            data: newUser
+        });
+    }
+});
+
+// Verify
+export const verify = TryCatchHandler(async (req, res, next) => {
+    // Get data from request body
+    const { id } = req.body;
+
+    // Check if the user exists in the db or not
+    const userExists = await UserModel.findById(id);
+    if (!userExists) {
+        throw new ErrorHandler("User does not exists", 404);
+    }
+
+    // Verify the user
+    userExists.verify_email = true;
+    await userExists.save({ validateBeforeSave: false });
 
     // Return the response
-    res.status(201).json({
+    res.status(200).json({
         success: true,
-        message: "User is registered successfully",
-        data: newUser
+        message: "User is verified successfully"
     });
 });
 
-// Login user
-export const loginUser = TryCatchHandler(async (req, res, next) => {
+// Login
+export const login = TryCatchHandler(async (req, res, next) => {
     // Get data from request body
     const { email, password } = req.body;
+
+    // Validation of data
+    if (!email || !password) {
+        throw new ErrorHandler("Please provide the email and password", 400);
+    }
 
     // Check if the user exists in the db or not
     const userExists = await UserModel.findOne({ email });
     if (!userExists) {
         throw new ErrorHandler("User does not exists", 404);
+    }
+
+    // Check if the user is active or not
+    if (userExists.status !== "Active") {
+        throw new ErrorHandler("User is inactive, Please contact to Admin", 409);
+    }
+
+    // Check if the user is verified or not
+    if (!userExists.verify_email) {
+        throw new ErrorHandler("User is not verified", 403);
     }
 
     // Validation of password
@@ -54,20 +108,29 @@ export const loginUser = TryCatchHandler(async (req, res, next) => {
         throw new ErrorHandler("Invalid Credentials", 403);
     }
 
-    // Generate jwt token
-    const token = jwt.sign({ id: userExists._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    // Generate the access and refresh token
+    const accessToken = jwt.sign({ id: userExists._id }, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
+    const refreshToken = jwt.sign({ id: userExists._id }, REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+
+    // Update the refresh token in db
+    await UserModel.findByIdAndUpdate(userExists._id, { refresh_token: refreshToken });
 
     // Remove sensitive data
     userExists.password = undefined;
-    userExists.__v = undefined;
 
-    // Return the response
-    res.cookie("token", token, {
+    // Return the cookie along with response
+    res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: ENV === "production",
         sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        maxAge: 15 * 60 * 1000
     })
+        .cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        })
         .status(200)
         .json({
             success: true,
@@ -76,9 +139,16 @@ export const loginUser = TryCatchHandler(async (req, res, next) => {
         });
 });
 
-// Logout user
-export const logoutUser = TryCatchHandler(async (req, res, next) => {
-    res.clearCookie("token").status(200).json({
+// Logout
+export const logout = TryCatchHandler(async (req, res, next) => {
+    // Get user id from request decoded (from auth middleware)
+    const userid = req.decoded.id;
+
+    // Remove the refresh token from db
+    await UserModel.findByIdAndUpdate(userid, { refresh_token: "" }, { new: true, runValidators: false });
+
+    // Remove the cookies and return the response
+    res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json({
         success: true,
         message: "Logged out successfully"
     });
