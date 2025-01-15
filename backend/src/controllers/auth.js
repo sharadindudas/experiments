@@ -268,3 +268,36 @@ export const forgotPassword = TryCatchHandler(async (req, res, next) => {
         message: "Password is updated successfully"
     });
 });
+
+// Refresh token
+export const refreshToken = TryCatchHandler(async (req, res, next) => {
+    // Get refresh token from cookies
+    const refreshToken = req.cookies.refreshToken;
+
+    // Validation of refresh token
+    if (!refreshToken) {
+        throw new ErrorHandler("Please provide the refresh token");
+    }
+
+    // Decode the payload
+    const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+    if (!decoded) {
+        throw new ErrorHandler("Invalid Token or Token has expired", 401);
+    }
+
+    // Generate a new access token
+    const accessToken = jwt.sign({ id: decoded.id }, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
+
+    // Set the new access token and return the response
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: ENV === "production",
+        sameSite: "strict",
+        maxAge: 15 * 60 * 1000
+    })
+        .status(200)
+        .json({
+            success: true,
+            message: "Generated new access token successfully"
+        });
+});

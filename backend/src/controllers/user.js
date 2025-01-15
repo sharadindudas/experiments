@@ -35,7 +35,7 @@ export const uploadAvatar = TryCatchHandler(async (req, res, next) => {
 
 // Update user
 export const updateUser = TryCatchHandler(async (req, res, next) => {
-    // Get data from request body and user id from auth middleware
+    // Get data from request body and auth middleware
     const { name, email, mobile } = req.body;
     const userid = req.decoded.id;
 
@@ -58,5 +58,24 @@ export const updateUser = TryCatchHandler(async (req, res, next) => {
         success: true,
         message: "Updated user details successfully",
         data: updatedUser
+    });
+});
+
+// Get user
+export const userDetails = TryCatchHandler(async (req, res, next) => {
+    // Get data from auth middleware
+    const userid = req.decoded.id;
+
+    // Check if the user exists in the db or not
+    const userExists = await UserModel.findById(userid).select("-password");
+    if (!userExists) {
+        throw new ErrorHandler("User does not exists", 404);
+    }
+
+    // Return the response
+    res.status(200).json({
+        success: true,
+        message: "Fetched user details successfully",
+        data: userExists
     });
 });
