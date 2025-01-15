@@ -21,7 +21,7 @@ const addressSchema = new Schema(
             type: String
         },
         mobile: {
-            type: Number,
+            type: String,
             default: null
         }
     },

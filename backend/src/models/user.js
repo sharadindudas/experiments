@@ -21,20 +21,18 @@ const userSchema = new Schema(
             default: ""
         },
         mobile: {
-            type: Number,
+            type: String,
             default: null
         },
         refresh_token: {
-            type: String,
-            default: ""
+            type: String
         },
         verify_email: {
             type: Boolean,
             default: false
         },
         last_login_date: {
-            type: Date,
-            default: ""
+            type: Date
         },
         status: {
             type: String,
@@ -60,12 +58,10 @@ const userSchema = new Schema(
             }
         ],
         forgot_password_otp: {
-            type: String,
-            default: null
+            type: String
         },
         forgot_password_expiry: {
-            type: Date,
-            default: ""
+            type: Date
         },
         role: {
             type: String,

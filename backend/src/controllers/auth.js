@@ -4,6 +4,8 @@ import verifyEmailTemplate from "../templates/verifyEmail.js";
 import { ErrorHandler, TryCatchHandler } from "../utils/handlers.js";
 import { sendMail } from "../utils/sendMail.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import forgotPasswordTemplate from "../templates/forgotPassword.js";
 
 // Signup
 export const signup = TryCatchHandler(async (req, res, next) => {
@@ -31,7 +33,7 @@ export const signup = TryCatchHandler(async (req, res, next) => {
     const url = `${FRONTEND_URL}/verify/id?=${newUser._id}`;
     const emailResponse = await sendMail({
         email,
-        title: "Blinkit | Verification Email",
+        title: "Binkeyit | Verification Email",
         body: verifyEmailTemplate({
             name,
             url
@@ -149,24 +151,120 @@ export const logout = TryCatchHandler(async (req, res, next) => {
     const userid = req.decoded.id;
 
     // Remove the refresh token from db
-    await UserModel.findByIdAndUpdate(userid, { refresh_token: "" }, { new: true, runValidators: false });
+    const user = await UserModel.findById(userid);
+    user.refresh_token = undefined;
+    await user.save({ validateBeforeSave: false });
 
     // Remove the cookies and return the response
-    res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: ENV === "production",
-        sameSite: "strict",
-        maxAge: 15 * 60 * 1000
-    })
-        .clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: ENV === "production",
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000
+    res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json({
+        success: true,
+        message: "User logged out successfully"
+    });
+});
+
+// Send forgot password otp
+export const sendForgotPasswordOtp = TryCatchHandler(async (req, res, next) => {
+    // Get data from request body
+    const { email } = req.body;
+
+    // Check if the user exists in the db or not
+    const userExists = await UserModel.findOne({ email });
+    if (!userExists) {
+        throw new ErrorHandler("User does not exists", 404);
+    }
+
+    // Generate the forgot password otp and otp expiry
+    const forgotPasswordOtp = crypto.randomInt(100000, 999999).toString().padStart(6, "0");
+    const forgotPasswordOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Send the otp to the user via email
+    const emailResponse = await sendMail({
+        email,
+        title: "Binkeyit | Forgot Password Otp",
+        body: forgotPasswordTemplate({
+            name: userExists.name,
+            otp: forgotPasswordOtp
         })
-        .status(200)
-        .json({
+    });
+
+    // Check if the email is sent to the user successfully or not
+    if (!emailResponse.success) {
+        throw new ErrorHandler(emailResponse.message, 400);
+    } else {
+        // Store the forgot password otp and otp expiry in db
+        userExists.forgot_password_otp = forgotPasswordOtp;
+        userExists.forgot_password_expiry = forgotPasswordOtpExpiry.toISOString();
+        await userExists.save({ validateBeforeSave: false });
+
+        // Return the response
+        res.status(200).json({
             success: true,
-            message: "User logged out successfully"
+            message: "Forgot password email is sent successfully"
         });
+    }
+});
+
+// Verify forgot password otp
+export const verifyForgotPasswordOtp = TryCatchHandler(async (req, res, next) => {
+    // Get data from request body
+    const { email, otp } = req.body;
+
+    // Validation of data
+    if (!email || !otp) {
+        throw new ErrorHandler("Please provide all the fields", 400);
+    }
+
+    // Check if the user exists in the db or not
+    const userExists = await UserModel.findOne({ email });
+    if (!userExists) {
+        throw new ErrorHandler("User does not exists", 404);
+    }
+
+    // Validation of forgot password otp and otp expiry
+    if (userExists.forgot_password_otp !== otp || new Date(Date.now()) > new Date(userExists.forgot_password_expiry)) {
+        throw new ErrorHandler("Invalid Otp or Otp has expired", 403);
+    }
+
+    // Remove the forgot password otp and otp expiry from db
+    userExists.forgot_password_otp = undefined;
+    userExists.forgot_password_expiry = undefined;
+    await userExists.save({ validateBeforeSave: false });
+
+    // Return the response
+    res.status(200).json({
+        success: true,
+        message: "Otp is verified successfully"
+    });
+});
+
+// Forgot password
+export const forgotPassword = TryCatchHandler(async (req, res, next) => {
+    // Get data from request body
+    const { email, newPassword, confirmNewPassword } = req.body;
+
+    // Validation of data
+    if (!email || !newPassword || !confirmNewPassword) {
+        throw new ErrorHandler("Please provide all the fields", 400);
+    }
+
+    // Check if the user exists in the db or not
+    const userExists = await UserModel.findOne({ email });
+    if (!userExists) {
+        throw new ErrorHandler("User does not exists", 404);
+    }
+
+    // Validation of new password and confirm new password
+    if (newPassword !== confirmNewPassword) {
+        throw new ErrorHandler("New password and confirm new password does not match", 400);
+    }
+
+    // Update the password for the user
+    userExists.password = newPassword;
+    await userExists.save();
+
+    // Return the response
+    res.status(200).json({
+        success: true,
+        message: "Password is updated successfully"
+    });
 });

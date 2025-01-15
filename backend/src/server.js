@@ -1,5 +1,6 @@
 import app from "./app.js";
 import { PORT, SERVER_URL } from "./config/config.js";
+import { connectCloudinary } from "./utils/cloudinary.js";
 import { connectMongoDB } from "./utils/mongodb.js";
 
 // Uncaught exception handling
@@ -14,6 +15,9 @@ const server = app.listen(PORT, () => console.log(`Server started at ${SERVER_UR
 
 // Connection to database
 connectMongoDB();
+
+// Connection to cloudinary
+connectCloudinary();
 
 // Unhandled promise rejection handling
 process.on("unhandledRejection", (err) => {
